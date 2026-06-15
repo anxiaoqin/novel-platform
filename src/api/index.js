@@ -1,27 +1,46 @@
+/**
+ * 十方书社 API 入口文件
+ * 基于 axios 的 HTTP 请求封装
+ */
+
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
-// API基础地址：生产环境用Vercel环境变量，开发环境走Vite代理
-const api = axios.create({ 
-  baseURL: import.meta.env.VITE_API_URL || '/api/v1', 
-  timeout: 30000 
+// 创建 axios 实例
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://103.217.187.186:8001/api/v1',
+  timeout: 60000, // AI生成可能较慢，超时设为60s
+  headers: {
+    'Content-Type': 'application/json'
+  }
 })
 
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+// 请求拦截器 - 添加 Token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
 
+// 响应拦截器 - 统一处理错误
 api.interceptors.response.use(
-  response => response.data,
-  error => {
+  (response) => {
+    return response.data // 直接返回data，简化调用
+  },
+  (error) => {
     if (error.response?.status === 401) {
-      // 仅在已登录状态下（有token）才清空并跳转，避免登录/注册请求401时误跳转
       const token = localStorage.getItem('token')
       if (token) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
-        // 避免在登录/注册页反复跳转
+        ElMessage.error('登录已过期，请重新登录')
         if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
           window.location.href = '/login'
         }
@@ -32,3 +51,21 @@ api.interceptors.response.use(
 )
 
 export default api
+
+// 导出所有模块
+export * as authApi from './modules/auth'
+export * as userApi from './modules/user'
+export * as creditsApi from './modules/credits'
+export * as novelApi from './modules/novel'
+export * as chapterApi from './modules/chapter'
+export * as worldApi from './modules/world'
+export * as characterApi from './modules/character'
+export * as timelineApi from './modules/timeline'
+export * as aiApi from './modules/ai'
+export * as outlineApi from './modules/outline'
+export * as streamApi from './modules/stream'
+export * as chapterVersionApi from './modules/chapterVersion'
+export * as creationApi from './modules/creation'
+export * as publishApi from './modules/publish'
+export * as coverApi from './modules/cover'
+export * as otherApi from './modules/other'
