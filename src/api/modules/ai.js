@@ -223,6 +223,13 @@ export function analyzeWritingDNA(data) {
   return api.post('/ai/writing-dna/analyze', data)
 }
 
+/**
+ * 获取作品写作DNA画像
+ */
+export function getWritingDNA(novelId) {
+  return api.get(`/novels/${novelId}/writing-dna`)
+}
+
 export default {
   // 通用
   aiGenerate,
@@ -274,5 +281,6 @@ export default {
   updateFramework,
   
   // 写作DNA
-  analyzeWritingDNA
+  analyzeWritingDNA,
+  getWritingDNA
 }
