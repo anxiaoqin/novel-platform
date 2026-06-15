@@ -14,7 +14,10 @@ const routes = [
       { path: 'novels/:id', name: 'NovelDetail', component: () => import('@/views/NovelDetail.vue') },
       { path: 'worlds', name: 'Worlds', component: () => import('@/views/Worlds.vue') },
       { path: 'characters', name: 'Characters', component: () => import('@/views/Characters.vue') },
+      { path: 'timeline', name: 'Timeline', component: () => import('@/views/Timeline.vue') },
       { path: 'ai-write', name: 'AIWrite', component: () => import('@/views/AIWrite.vue') },
+      { path: 'co-creation', name: 'CoCreation', component: () => import('@/views/CoCreation.vue') },
+      { path: 'writing-dna', name: 'WritingDNA', component: () => import('@/views/WritingDNA.vue') },
       { path: 'publish', name: 'Publish', component: () => import('@/views/Publish.vue') },
       { path: 'settings', name: 'Settings', component: () => import('@/views/Settings.vue') }
     ]
