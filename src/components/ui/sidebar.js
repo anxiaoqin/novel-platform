@@ -1,0 +1,8 @@
+export { default as Sidebar } from './sidebar.vue'
+export { default as SidebarProvider } from './sidebar-provider.vue'
+export { default as SidebarInset } from './sidebar-inset.vue'
+export { default as SidebarTrigger } from './sidebar-trigger.vue'
+export { default as SidebarMenu } from './sidebar-menu.vue'
+export { default as SidebarMenuItem } from './sidebar-menu-item.vue'
+export { default as SidebarMenuButton } from './sidebar-menu-button.vue'
+export { default as SidebarMenuSub } from './sidebar-menu-sub.vue'

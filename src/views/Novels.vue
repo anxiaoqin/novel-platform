@@ -1,144 +1,233 @@
 <template>
-  <div class="novels-page">
-    <div class="header">
-      <h2>我的作品</h2>
-      <el-button type="primary" @click="showCreateDialog = true">创建新作品</el-button>
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">我的作品</h1>
+      <Button @click="showCreateDialog = true">
+        <Plus class="mr-2 h-4 w-4" /> 创建新作品
+      </Button>
     </div>
-    
-    <el-row :gutter="20">
-      <el-col :xs="24" :sm="12" :md="8" v-for="novel in novels" :key="novel.id">
-        <el-card class="novel-card" shadow="hover" @click="goDetail(novel.id)">
-          <h3>{{ novel.title }}</h3>
-          <p class="synopsis">{{ novel.description || '暂无简介' }}</p>
-          <div class="meta">
-            <span>字数：{{ novel.word_count || 0 }}</span>
-            <span :class="statusClass(novel.status)">{{ statusText(novel.status) }}</span>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-    
-    <el-empty v-if="!novels.length" description="暂无作品，点击创建第一本小说" />
 
-    <!-- 创建作品对话框 -->
-    <el-dialog v-model="showCreateDialog" title="创建新作品" width="520px" :close-on-click-modal="false">
-      <el-form :model="createForm" :rules="formRules" ref="formRef" label-width="80px">
-        <el-form-item label="作品名称" prop="title">
-          <el-input v-model="createForm.title" placeholder="请输入作品名称" maxlength="50" show-word-limit />
-        </el-form-item>
-        <el-form-item label="类型" prop="genre">
-          <el-select v-model="createForm.genre" placeholder="选择作品类型" style="width:100%">
-            <el-option v-for="g in genres" :key="g" :label="g" :value="g" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="简介">
-          <el-input v-model="createForm.description" type="textarea" :rows="3" placeholder="简要描述你的作品" maxlength="500" show-word-limit />
-        </el-form-item>
-        <el-form-item label="写作风格">
-          <el-input v-model="createForm.writing_style" placeholder="如：古风、轻松、热血" />
-        </el-form-item>
-        <el-form-item label="核心创意">
-          <el-input v-model="createForm.core_idea" placeholder="一句话概括核心卖点" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleCreateSubmit">创建</el-button>
-      </template>
-    </el-dialog>
+    <!-- Search & Filter -->
+    <div class="flex flex-wrap gap-3">
+      <div class="relative flex-1 min-w-[200px] max-w-sm">
+        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input v-model="searchQuery" placeholder="搜索作品..." class="pl-9" />
+      </div>
+      <Select v-model="statusFilter">
+        <SelectTrigger class="w-[130px]">
+          <SelectValue placeholder="全部状态" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">全部</SelectItem>
+          <SelectItem value="draft">草稿</SelectItem>
+          <SelectItem value="writing">创作中</SelectItem>
+          <SelectItem value="completed">已完结</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    <!-- Novel Grid -->
+    <div v-if="filteredNovels.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Card
+        v-for="novel in filteredNovels"
+        :key="novel.id"
+        class="cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 group"
+        @click="goDetail(novel.id)"
+      >
+        <CardHeader class="pb-3">
+          <div class="flex items-start justify-between">
+            <CardTitle class="text-base line-clamp-1">{{ novel.title }}</CardTitle>
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child @click.stop>
+                <Button variant="ghost" size="icon" class="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <MoreHorizontal class="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem @click.stop="goDetail(novel.id)">
+                  <Pencil class="mr-2 h-4 w-4" /> 编辑信息
+                </DropdownMenuItem>
+                <DropdownMenuItem @click.stop="handleCopyNovel(novel)">
+                  <Copy class="mr-2 h-4 w-4" /> 复制作品
+                </DropdownMenuItem>
+                <DropdownMenuItem @click.stop="handleExportNovel(novel)">
+                  <Download class="mr-2 h-4 w-4" /> 导出TXT
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem @click.stop="handleDeleteNovel(novel)" class="text-destructive">
+                  <Trash2 class="mr-2 h-4 w-4" /> 删除
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <p class="text-sm text-muted-foreground line-clamp-2">{{ novel.description || '暂无简介' }}</p>
+        </CardHeader>
+        <CardContent>
+          <div class="flex items-center gap-2">
+            <Badge :variant="statusVariant(novel.status)">{{ statusText(novel.status) }}</Badge>
+            <Badge v-if="novel.genre" variant="outline">{{ novel.genre }}</Badge>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+            <span>{{ novel.word_count || 0 }} 字</span>
+            <Button variant="default" size="sm" @click.stop="goWrite(novel.id)">
+              写作 <ArrowRight class="ml-1 h-3 w-3" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+
+    <!-- Empty State -->
+    <div v-else class="flex flex-col items-center justify-center py-20 text-center">
+      <BookOpen class="h-12 w-12 text-muted-foreground/50" />
+      <p class="mt-4 text-muted-foreground">暂无作品，点击创建第一本小说</p>
+      <Button class="mt-4" @click="showCreateDialog = true">
+        <Plus class="mr-2 h-4 w-4" /> 创建新作品
+      </Button>
+    </div>
+
+    <!-- Create Dialog -->
+    <Dialog :open="showCreateDialog" @update:open="showCreateDialog = $event">
+      <DialogContent class="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>创建新作品</DialogTitle>
+          <DialogDescription>填写基本信息，开始你的创作之旅</DialogDescription>
+        </DialogHeader>
+        <form @submit.prevent="handleCreateSubmit" class="space-y-4">
+          <div class="space-y-2">
+            <Label for="title">作品名称 *</Label>
+            <Input id="title" v-model="createForm.title" placeholder="请输入作品名称" maxlength="50" />
+          </div>
+          <div class="space-y-2">
+            <Label for="genre">类型 *</Label>
+            <Select v-model="createForm.genre">
+              <SelectTrigger>
+                <SelectValue placeholder="选择作品类型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="g in genres" :key="g" :value="g">{{ g }}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="space-y-2">
+            <Label for="desc">简介</Label>
+            <Textarea id="desc" v-model="createForm.description" placeholder="简要描述你的作品" :rows="3" maxlength="500" />
+          </div>
+          <div class="space-y-2">
+            <Label for="style">写作风格</Label>
+            <Input id="style" v-model="createForm.writing_style" placeholder="如：古风、轻松、热血" />
+          </div>
+          <div class="space-y-2">
+            <Label for="idea">核心创意</Label>
+            <Input id="idea" v-model="createForm.core_idea" placeholder="一句话概括核心卖点" />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" @click="showCreateDialog = false">取消</Button>
+            <Button type="submit" :loading="creating">创建</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { getNovels, createNovel } from '@/api/modules/novel'
+import { getNovels, createNovel, deleteNovel, getNovel } from '@/api/modules/novel'
+import { getChapters } from '@/api/modules/chapter'
+import api from '@/api'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
+import { Plus, Search, MoreHorizontal, Pencil, Copy, Download, Trash2, ArrowRight, BookOpen } from 'lucide-vue-next'
 
 const router = useRouter()
 const novels = ref([])
 const showCreateDialog = ref(false)
 const creating = ref(false)
-const formRef = ref(null)
+const searchQuery = ref('')
+const statusFilter = ref('all')
 
 const genres = ['玄幻', '仙侠', '都市', '科幻', '历史', '悬疑', '言情', '游戏', '体育', '军事', '奇幻', '武侠', '其他']
 
-const createForm = ref({
-  title: '',
-  genre: '',
-  description: '',
-  writing_style: '',
-  core_idea: ''
+const createForm = ref({ title: '', genre: '', description: '', writing_style: '', core_idea: '' })
+
+const statusText = (s) => ({ draft: '草稿', writing: '创作中', completed: '已完结' })[s] || '草稿'
+const statusVariant = (s) => ({ draft: 'outline', writing: 'default', completed: 'secondary' })[s] || 'outline'
+
+const filteredNovels = computed(() => {
+  let list = novels.value
+  if (statusFilter.value !== 'all') list = list.filter(n => n.status === statusFilter.value)
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter(n => n.title?.toLowerCase().includes(q) || n.description?.toLowerCase().includes(q))
+  }
+  return list
 })
-
-const formRules = {
-  title: [{ required: true, message: '请输入作品名称', trigger: 'blur' }],
-  genre: [{ required: true, message: '请选择作品类型', trigger: 'change' }]
-}
-
-const statusText = (status) => {
-  const map = { draft: '草稿', writing: '创作中', completed: '已完结' }
-  return map[status] || '草稿'
-}
-
-const statusClass = (status) => {
-  const map = { draft: 'status-draft', writing: 'status-writing', completed: 'status-done' }
-  return map[status] || 'status-draft'
-}
 
 const loadNovels = async () => {
   try {
     const res = await getNovels()
     novels.value = res.data?.items || res.items || res.data || []
-  } catch (err) {
-    console.error('加载作品列表失败:', err)
-  }
+  } catch (err) { console.error('加载作品列表失败:', err) }
+}
+
+const goDetail = (id) => router.push(`/home/novels/${id}`)
+const goWrite = (id) => router.push(`/home/novels/${id}`)
+
+const handleDeleteNovel = async (novel) => {
+  if (!confirm(`确定删除作品《${novel.title}》吗？此操作不可恢复！`)) return
+  try { await deleteNovel(novel.id); loadNovels() } catch (err) { console.error('删除失败:', err) }
+}
+
+const handleCopyNovel = async (novel) => {
+  try { await api.post(`/novels/${novel.id}/copy`, { title: `${novel.title}（副本）` }); loadNovels() } catch (err) { console.error('复制失败:', err) }
+}
+
+const handleExportNovel = async (novel) => {
+  try {
+    const novelRes = await getNovel(novel.id)
+    const novelData = novelRes.data || novelRes
+    const chaptersRes = await getChapters(novel.id)
+    const chapters = chaptersRes.data?.items || chaptersRes.data || chaptersRes || []
+    let txt = `# ${novelData.title}\n\n`
+    if (novelData.description) txt += `## 简介\n${novelData.description}\n\n`
+    txt += '='.repeat(40) + '\n\n'
+    for (let i = 0; i < chapters.length; i++) {
+      const ch = chapters[i]
+      txt += `## 第${i + 1}章 ${ch.title}\n\n`
+      try {
+        const res = await api.get(`/chapters/${ch.id}`)
+        txt += (res.data?.content || res.content || '').replace(/<[^>]*>/g, '').trim() + '\n\n'
+      } catch { txt += '（章节内容获取失败）\n\n' }
+    }
+    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = `${novelData.title}.txt`; a.click()
+    URL.revokeObjectURL(url)
+  } catch (err) { console.error('导出失败:', err) }
 }
 
 const handleCreateSubmit = async () => {
-  if (!formRef.value) return
-  try {
-    await formRef.value.validate()
-  } catch { return }
-  
+  if (!createForm.value.title || !createForm.value.genre) return
   creating.value = true
   try {
     const res = await createNovel(createForm.value)
-    ElMessage.success('作品创建成功')
     showCreateDialog.value = false
-    // 重置表单
     createForm.value = { title: '', genre: '', description: '', writing_style: '', core_idea: '' }
-    // 重新加载列表
     await loadNovels()
-    // 跳转到新作品详情
     const newId = res.data?.id || res.id
-    if (newId) {
-      router.push(`/home/novels/${newId}`)
-    }
-  } catch (err) {
-    ElMessage.error(err.response?.data?.error || '创建失败，请重试')
-  } finally {
-    creating.value = false
-  }
-}
-
-const goDetail = (id) => {
-  router.push(`/home/novels/${id}`)
+    if (newId) router.push(`/home/novels/${newId}`)
+  } catch (err) { console.error('创建失败:', err) } finally { creating.value = false }
 }
 
 onMounted(loadNovels)
 </script>
-
-<style scoped>
-.novels-page { padding: 24px; }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.header h2 { margin: 0; }
-.novel-card { cursor: pointer; margin-bottom: 20px; transition: transform 0.2s; }
-.novel-card:hover { transform: translateY(-2px); }
-.novel-card h3 { margin-bottom: 8px; font-size: 16px; }
-.synopsis { color: var(--text-secondary, #666); font-size: 14px; margin-bottom: 12px; height: 40px; overflow: hidden; }
-.meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-tertiary, #999); }
-.status-draft { color: var(--color-info, #909399); }
-.status-writing { color: var(--color-primary, #409eff); }
-.status-done { color: var(--color-success, #67c23a); }
-</style>

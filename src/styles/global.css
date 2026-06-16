@@ -1,18 +1,11 @@
 /* ============================================
-   十方天地网文创作平台 - 全局样式
-   配合 themes.css 使用
+   十方书社 - 全局样式
+   配合 themes.css + tailwind.css 使用
    ============================================ */
-
-/* 全局重置 */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
 
 html, body, #app {
   height: 100%;
-  font-family: var(--font-content, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
   background: var(--bg-primary);
   color: var(--text-primary);
   transition: background 0.3s ease, color 0.3s ease;
@@ -24,105 +17,15 @@ html, body, #app {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: var(--scrollbar-track, var(--bg-secondary));
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color);
+  background: var(--scrollbar-thumb, var(--border-color));
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--scrollbar-thumb-hover, var(--text-secondary));
 }
-
-/* ElementPlus 主题覆盖 */
-.el-menu {
-  background: var(--bg-secondary) !important;
-  border-right: none !important;
-}
-.el-menu-item {
-  color: var(--text-secondary) !important;
-}
-.el-menu-item:hover,
-.el-menu-item.is-active {
-  background: var(--bg-hover) !important;
-  color: var(--brand-primary) !important;
-}
-
-.el-card {
-  background: var(--bg-card) !important;
-  border-color: var(--border-color) !important;
-  color: var(--text-primary) !important;
-}
-
-.el-dialog {
-  background: var(--bg-card) !important;
-  border-color: var(--border-color) !important;
-}
-.el-dialog__title {
-  color: var(--text-primary) !important;
-}
-.el-dialog__body {
-  color: var(--text-secondary) !important;
-}
-
-.el-input__wrapper {
-  background: var(--bg-input) !important;
-  box-shadow: 0 0 0 1px var(--border-color) inset !important;
-}
-.el-input__inner {
-  color: var(--text-primary) !important;
-}
-.el-input__inner::placeholder {
-  color: var(--text-placeholder) !important;
-}
-
-.el-textarea__inner {
-  background: var(--bg-input) !important;
-  color: var(--text-primary) !important;
-  border-color: var(--border-color) !important;
-}
-
-.el-select-dropdown {
-  background: var(--bg-card) !important;
-  border-color: var(--border-color) !important;
-}
-.el-select-dropdown__item {
-  color: var(--text-secondary) !important;
-}
-.el-select-dropdown__item.hover,
-.el-select-dropdown__item:hover {
-  background: var(--bg-hover) !important;
-  color: var(--brand-primary) !important;
-}
-
-.el-button--primary {
-  --el-button-bg-color: var(--brand-primary) !important;
-  --el-button-border-color: var(--brand-primary) !important;
-}
-
-.el-table {
-  --el-table-bg-color: var(--bg-card) !important;
-  --el-table-tr-bg-color: var(--bg-card) !important;
-  --el-table-header-bg-color: var(--bg-secondary) !important;
-  --el-table-row-hover-bg-color: var(--bg-hover) !important;
-  --el-table-border-color: var(--border-color) !important;
-  --el-table-text-color: var(--text-primary) !important;
-  --el-table-header-text-color: var(--text-secondary) !important;
-}
-
-.el-pagination {
-  --el-pagination-bg-color: var(--bg-card) !important;
-  --el-pagination-text-color: var(--text-secondary) !important;
-  --el-pagination-button-bg-color: var(--bg-secondary) !important;
-}
-
-/* 通用工具类 */
-.text-brand { color: var(--brand-primary); }
-.text-secondary { color: var(--text-secondary); }
-.text-placeholder { color: var(--text-placeholder); }
-.bg-card { background: var(--bg-card); }
-.bg-secondary { background: var(--bg-secondary); }
-.bg-hover { background: var(--bg-hover); }
 
 /* 打字机光标动画 */
 @keyframes blink {
@@ -153,5 +56,5 @@ html, body, #app {
   background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-hover) 50%, var(--bg-secondary) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }

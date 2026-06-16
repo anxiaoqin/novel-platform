@@ -1,296 +1,130 @@
 <template>
-  <div class="novel-detail">
-    <!-- 顶部导航 -->
-    <div class="page-header">
-      <el-button @click="goBack" size="small">← 返回</el-button>
-      <h2>{{ novel.title || '加载中...' }}</h2>
-      <el-button type="primary" @click="showAddChapter = true" size="small">+ 新章节</el-button>
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center gap-3">
+      <Button variant="ghost" size="sm" @click="router.push('/home/novels')">
+        <ArrowLeft class="mr-1 h-4 w-4" /> 返回
+      </Button>
+      <h1 class="text-xl font-bold flex-1">{{ novel.title || '加载中...' }}</h1>
+      <Button @click="openNewChapter">
+        <Plus class="mr-1 h-4 w-4" /> 新章节
+      </Button>
     </div>
 
-    <!-- 小说信息卡片 -->
-    <el-card class="info-card">
-      <el-descriptions :column="3" border>
-        <el-descriptions-item label="字数">{{ wordCount }} 字</el-descriptions-item>
-        <el-descriptions-item label="章节数">{{ chapters.length }} 章</el-descriptions-item>
-        <el-descriptions-item label="状态">
-          <el-tag :type="novel.status === 'completed' ? 'success' : 'primary'">
-            {{ novel.status === 'completed' ? '已完成' : '创作中' }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="简介" :span="3">{{ novel.description || '暂无简介' }}</el-descriptions-item>
-      </el-descriptions>
-    </el-card>
-
-    <!-- 章节列表 -->
-    <el-card class="chapters-card">
-      <template #header>
-        <span>章节列表</span>
-      </template>
-      <el-empty v-if="chapters.length === 0" description="暂无章节，点击右上角添加" />
-      <el-table v-else :data="chapters" stripe style="width: 100%">
-        <el-table-column prop="order" label="序号" width="80" />
-        <el-table-column prop="title" label="标题" />
-        <el-table-column label="字数" width="100">
-          <template #default="{ row }">
-            {{ row.content ? row.content.replace(/<[^>]*>/g, '').length : 0 }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="180">
-          <template #default="{ row }">
-            <el-button type="primary" size="small" @click="editChapter(row)">编辑</el-button>
-            <el-button type="danger" size="small" @click="deleteChapter(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-
-    <!-- 添加/编辑章节对话框 -->
-    <el-dialog 
-      v-model="showAddChapter" 
-      :title="editingChapter ? '编辑章节' : '添加章节'"
-      width="80%"
-      top="5vh"
-      destroy-on-close
-    >
-      <div class="chapter-editor">
-        <el-input v-model="chapterTitle" placeholder="章节标题" class="chapter-title-input" size="large" />
-        
-        <!-- 编辑器工具栏 -->
-        <div class="editor-toolbar">
-          <el-button-group>
-            <el-button size="small" @click="insertFormat('bold')" title="加粗"><strong>B</strong></el-button>
-            <el-button size="small" @click="insertFormat('italic')" title="斜体"><em>I</em></el-button>
-            <el-button size="small" @click="insertFormat('heading')" title="标题">H</el-button>
-            <el-button size="small" @click="insertFormat('quote')" title="引用">""</el-button>
-          </el-button-group>
-          <span class="word-count-inline">字数：{{ contentWordCount }}</span>
-        </div>
-
-        <!-- 内容编辑区 -->
-        <el-input
-          v-model="chapterContent"
-          type="textarea"
-          :rows="18"
-          placeholder="开始创作你的章节内容...&#10;&#10;支持简单格式：&#10;**加粗** _斜体_ ## 标题 > 引用"
-          class="chapter-textarea"
-        />
-
-        <div class="editor-footer">
-          <div></div>
-          <div class="action-buttons">
-            <el-button @click="showAddChapter = false">取消</el-button>
-            <el-button type="primary" @click="saveChapter" :loading="saving">
-              {{ editingChapter ? '保存' : '创建' }}
-            </el-button>
+    <!-- Info Card -->
+    <Card>
+      <CardContent class="pt-6">
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div class="space-y-1">
+            <p class="text-sm text-muted-foreground">字数</p>
+            <p class="text-2xl font-bold">{{ wordCount.toLocaleString() }}</p>
+          </div>
+          <div class="space-y-1">
+            <p class="text-sm text-muted-foreground">章节数</p>
+            <p class="text-2xl font-bold">{{ chapters.length }}</p>
+          </div>
+          <div class="space-y-1">
+            <p class="text-sm text-muted-foreground">状态</p>
+            <Badge :variant="statusVariant(novel.status)">{{ statusText(novel.status) }}</Badge>
           </div>
         </div>
-      </div>
-    </el-dialog>
+        <Separator class="my-4" />
+        <p class="text-sm text-muted-foreground">{{ novel.description || '暂无简介' }}</p>
+        <div class="mt-3 flex items-center gap-2">
+          <Badge v-if="novel.genre" variant="outline">{{ novel.genre }}</Badge>
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button variant="ghost" size="sm"><MoreHorizontal class="h-4 w-4" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem @click="handleCopyNovel"><Copy class="mr-2 h-4 w-4" />复制作品</DropdownMenuItem>
+              <DropdownMenuItem @click="handleExportNovel"><Download class="mr-2 h-4 w-4" />导出TXT</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem @click="handleDeleteNovel" class="text-destructive"><Trash2 class="mr-2 h-4 w-4" />删除作品</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- Chapters -->
+    <Card>
+      <CardHeader>
+        <CardTitle class="text-base">章节列表</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div v-if="!chapters.length" class="py-8 text-center text-muted-foreground">
+          暂无章节，点击右上角添加
+        </div>
+        <div v-else class="space-y-1">
+          <div
+            v-for="(ch, i) in chapters"
+            :key="ch.id"
+            class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-accent/50 transition-colors group"
+          >
+            <span class="text-sm text-muted-foreground w-8">{{ ch.order || i + 1 }}</span>
+            <span class="flex-1 text-sm truncate">{{ ch.title }}</span>
+            <span class="text-xs text-muted-foreground">{{ (ch.content || '').replace(/<[^>]*>/g, '').length }} 字</span>
+            <Button variant="ghost" size="sm" @click="editChapter(ch)">写作</Button>
+            <Button variant="ghost" size="sm" class="opacity-0 group-hover:opacity-100 text-destructive" @click="deleteChapter(ch)">删除</Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import api from '@/api'
+import { getNovel, deleteNovel } from '@/api/modules/novel'
+import { getChapters, deleteChapter as deleteChapterApi } from '@/api/modules/chapter'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
+import { ArrowLeft, Plus, MoreHorizontal, Copy, Download, Trash2 } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
-
-// 数据
 const novel = ref({})
 const chapters = ref([])
-const showAddChapter = ref(false)
-const editingChapter = ref(null)
-const chapterTitle = ref('')
-const chapterContent = ref('')
-const saving = ref(false)
 
-// 计算属性
-const wordCount = computed(() => {
-  return chapters.value.reduce((sum, ch) => {
-    const text = ch.content ? ch.content.replace(/<[^>]*>/g, '') : ''
-    return sum + text.length
-  }, 0)
-})
+const wordCount = computed(() => chapters.value.reduce((sum, ch) => sum + (ch.content ? ch.content.replace(/<[^>]*>/g, '').length : 0), 0))
+const statusText = (s) => ({ draft: '草稿', writing: '创作中', completed: '已完结' })[s] || '草稿'
+const statusVariant = (s) => ({ draft: 'outline', writing: 'default', completed: 'secondary' })[s] || 'outline'
 
-const contentWordCount = computed(() => {
-  return chapterContent.value.replace(/\s/g, '').length
-})
+const loadNovel = async () => { try { const res = await getNovel(route.params.id); novel.value = res.data || res } catch {} }
+const loadChapters = async () => { try { const res = await getChapters(route.params.id); chapters.value = res.data?.items || res.data || res || [] } catch { chapters.value = [] } }
 
-// 加载数据
-const loadNovel = async () => {
+const handleCopyNovel = async () => { /* copy not yet implemented */ }
+const handleExportNovel = async () => {
   try {
-    novel.value = await api.get(`/novels/${route.params.id}`)
-  } catch (err) {
-    console.error(err)
-    ElMessage.error('加载小说失败')
-  }
-}
-
-const loadChapters = async () => {
-  try {
-    chapters.value = await api.get(`/novels/${route.params.id}/chapters`)
-  } catch (err) {
-    console.error('加载章节失败', err)
-    chapters.value = []
-  }
-}
-
-// 简单格式插入
-const insertFormat = (type) => {
-  const textarea = document.querySelector('.chapter-textarea textarea')
-  if (!textarea) return
-  const start = textarea.selectionStart
-  const end = textarea.selectionEnd
-  const text = chapterContent.value
-  const selected = text.substring(start, end)
-  
-  let before = '', after = ''
-  switch (type) {
-    case 'bold': before = '**'; after = '**'; break
-    case 'italic': before = '_'; after = '_'; break
-    case 'heading': before = '## '; after = ''; break
-    case 'quote': before = '> '; after = ''; break
-  }
-  
-  chapterContent.value = text.substring(0, start) + before + selected + after + text.substring(end)
-}
-
-// 编辑章节
-const editChapter = (chapter) => {
-  editingChapter.value = chapter
-  chapterTitle.value = chapter.title
-  chapterContent.value = chapter.content || ''
-  showAddChapter.value = true
-}
-
-// 保存章节
-const saveChapter = async () => {
-  if (!chapterTitle.value.trim()) {
-    ElMessage.warning('请输入章节标题')
-    return
-  }
-
-  saving.value = true
-  try {
-    const data = {
-      title: chapterTitle.value,
-      content: chapterContent.value
+    let txt = `# ${novel.value.title}\n\n`
+    if (novel.value.description) txt += `## 简介\n${novel.value.description}\n\n`
+    txt += '='.repeat(40) + '\n\n'
+    for (let i = 0; i < chapters.value.length; i++) {
+      txt += `## 第${i + 1}章 ${chapters.value[i].title}\n\n`
+      txt += (chapters.value[i].content || '').replace(/<[^>]*>/g, '').trim() + '\n\n'
     }
-
-    if (editingChapter.value) {
-      await api.put(`/chapters/${editingChapter.value.id}`, data)
-      ElMessage.success('章节保存成功')
-    } else {
-      await api.post(`/novels/${route.params.id}/chapters`, data)
-      ElMessage.success('章节创建成功')
-    }
-
-    showAddChapter.value = false
-    editingChapter.value = null
-    chapterTitle.value = ''
-    chapterContent.value = ''
-    loadChapters()
-  } catch (err) {
-    console.error(err)
-    ElMessage.error('保存失败')
-  } finally {
-    saving.value = false
-  }
+    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = novel.value.title + '.txt'; a.click()
+    URL.revokeObjectURL(url)
+  } catch {}
+}
+const handleDeleteNovel = async () => {
+  if (!confirm(`确定删除作品「${novel.value.title}」吗？此操作不可恢复！`)) return
+  try { await deleteNovel(novel.value.id); router.push('/home/novels') } catch {}
 }
 
-// 删除章节
+const openNewChapter = () => { /* Will navigate to writing workspace */ router.push(`/home/novels/${route.params.id}`) }
+const editChapter = (chapter) => { router.push('/write/' + route.params.id + '/' + chapter.id) }
 const deleteChapter = async (chapter) => {
-  try {
-    await ElMessageBox.confirm(`确定删除章节"${chapter.title}"吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    await api.delete(`/chapters/${chapter.id}`)
-    ElMessage.success('删除成功')
-    loadChapters()
-  } catch (err) {
-    if (err !== 'cancel') {
-      console.error(err)
-      ElMessage.error('删除失败')
-    }
-  }
+  if (!confirm(`确定删除章节「${chapter.title}」吗？`)) return
+  try { await deleteChapterApi(chapter.id); loadChapters() } catch {}
 }
 
-const goBack = () => router.push('/home/novels')
-
-onMounted(() => {
-  loadNovel()
-  loadChapters()
-})
+onMounted(() => { loadNovel(); loadChapters() })
 </script>
-
-<style scoped>
-.novel-detail {
-  padding: 20px;
-}
-
-.page-header {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.page-header h2 {
-  flex: 1;
-  margin: 0;
-}
-
-.info-card {
-  margin-bottom: 20px;
-}
-
-.chapters-card {
-  margin-bottom: 20px;
-}
-
-.chapter-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.chapter-title-input {
-  font-size: 18px;
-}
-
-.editor-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-}
-
-.word-count-inline {
-  color: #909399;
-  font-size: 13px;
-}
-
-.chapter-textarea :deep(textarea) {
-  font-size: 15px;
-  line-height: 1.8;
-  font-family: 'Microsoft YaHei', sans-serif;
-}
-
-.editor-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 10px;
-  border-top: 1px solid #e6e6e6;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 10px;
-}
-</style>

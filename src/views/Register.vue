@@ -1,27 +1,33 @@
 <template>
-  <div class="register-container">
-    <el-card class="register-card">
-      <template #header>
-        <h2>用户注册</h2>
-      </template>
-      <el-form :model="form" :rules="rules" ref="formRef">
-        <el-form-item prop="username">
-          <el-input v-model="form.username" placeholder="用户名" prefix-icon="User" />
-        </el-form-item>
-        <el-form-item prop="email">
-          <el-input v-model="form.email" placeholder="邮箱" prefix-icon="Message" />
-        </el-form-item>
-        <el-form-item prop="password">
-          <el-input v-model="form.password" type="password" placeholder="密码" prefix-icon="Lock" />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" style="width: 100%" :loading="loading" @click="handleRegister">注册</el-button>
-        </el-form-item>
-      </el-form>
-      <div class="footer">
-        已有账号？<router-link to="/login">立即登录</router-link>
-      </div>
-    </el-card>
+  <div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/20 via-background to-primary/5 p-4">
+    <Card class="w-full max-w-sm">
+      <CardHeader class="text-center">
+        <div class="mx-auto mb-2 text-4xl">📖</div>
+        <CardTitle class="text-xl">创建账号</CardTitle>
+        <CardDescription>加入十方天地，开始创作</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form @submit.prevent="handleRegister" class="space-y-4">
+          <div class="space-y-2">
+            <Label for="username">用户名</Label>
+            <Input id="username" v-model="form.username" placeholder="请输入用户名" />
+          </div>
+          <div class="space-y-2">
+            <Label for="email">邮箱</Label>
+            <Input id="email" v-model="form.email" type="email" placeholder="请输入邮箱" />
+          </div>
+          <div class="space-y-2">
+            <Label for="password">密码</Label>
+            <Input id="password" v-model="form.password" type="password" placeholder="至少6位" />
+          </div>
+          <Button type="submit" class="w-full" :loading="loading">注册</Button>
+        </form>
+      </CardContent>
+      <CardFooter class="justify-center">
+        <span class="text-sm text-muted-foreground">已有账号？</span>
+        <router-link to="/login" class="text-sm text-primary hover:underline ml-1">立即登录</router-link>
+      </CardFooter>
+    </Card>
   </div>
 </template>
 
@@ -29,51 +35,27 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/api'
-import { ElMessage } from 'element-plus'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 
 const router = useRouter()
-const formRef = ref()
 const loading = ref(false)
 
-const form = reactive({
-  username: '',
-  email: '',
-  password: ''
-})
-
-const rules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  email: [{ required: true, type: 'email', message: '请输入邮箱', trigger: 'blur' }],
-  password: [{ required: true, min: 6, message: '密码至少6位', trigger: 'blur' }]
-}
+const form = reactive({ username: '', email: '', password: '' })
 
 const handleRegister = async () => {
-  const valid = await formRef.value.validate().catch(() => false)
-  if (!valid) return
-  
+  if (!form.username || !form.email || !form.password) return
   loading.value = true
   try {
-    await api.post('/auth/register', form)
-    ElMessage.success('注册成功，请登录')
+    await api.post('/auth/register', { ...form, agreements_accepted: true })
     router.push('/login')
   } catch (err) {
     const msg = err.response?.data?.error || err.response?.data?.detail || err.message || '注册失败'
-    ElMessage.error(msg)
+    alert(msg)
   } finally {
     loading.value = false
   }
 }
 </script>
-
-<style scoped>
-.register-container {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-.register-card { width: 400px; }
-.footer { text-align: center; margin-top: 16px; }
-a { color: #409eff; text-decoration: none; }
-</style>

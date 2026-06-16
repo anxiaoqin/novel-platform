@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  /* 映射现有主题变量到 Tailwind token */
+  --color-primary: var(--brand-primary);
+  --color-primary-light: var(--brand-primary-light);
+  --color-primary-dark: var(--brand-primary-dark);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--bg-secondary);
+  --color-secondary-foreground: var(--text-primary);
+  --color-accent: var(--brand-primary-bg);
+  --color-accent-foreground: var(--brand-primary);
+  --color-muted: var(--bg-secondary);
+  --color-muted-foreground: var(--text-secondary);
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #ffffff;
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--bg-card);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--bg-card);
+  --color-popover-foreground: var(--text-primary);
+  --color-border: var(--border-color);
+  --color-input: var(--border-color);
+  --color-ring: var(--brand-primary);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-sidebar-active: var(--sidebar-active-bar);
+  --color-ai-generated: var(--ai-text-generated);
+  --color-ai-edited: var(--ai-text-edited);
+  --color-ai-input: var(--ai-text-input);
+  --color-ai-prompt: var(--ai-text-prompt);
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --font-body: var(--font-body);
+  --font-content: var(--font-content);
+  --font-mono: var(--font-mono);
+}

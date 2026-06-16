@@ -1,105 +1,117 @@
 <template>
-  <div class="settings-page">
-    <h2>设置</h2>
-    <el-tabs v-model="activeTab">
-      <el-tab-pane label="基本设置" name="basic">
-        <el-card>
-          <el-form label-width="120px">
-            <el-form-item label="主题">
-              <el-radio-group v-model="settings.theme">
-                <el-radio label="light">浅色</el-radio>
-                <el-radio label="dark">深色</el-radio>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item label="自动保存">
-              <el-switch v-model="settings.autoSave" />
-            </el-form-item>
-            <el-form-item label="保存间隔">
-              <el-input-number v-model="settings.autoSaveInterval" :min="10" :max="300" :step="10" />
-              <span style="margin-left: 8px">秒</span>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="saveSettings">保存设置</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </el-tab-pane>
-      
-      <el-tab-pane label="AI配置" name="ai">
-        <el-card>
-          <el-form label-width="120px">
-            <el-form-item label="AI服务商">
-              <el-select v-model="settings.aiProvider" style="width: 200px">
-                <el-option label="扣子 Coze" value="coze" />
-                <el-option label="通义千问" value="qwen" />
-                <el-option label="自定义API" value="custom" />
-              </el-select>
-            </el-form-item>
-            <el-form-item v-if="settings.aiProvider === 'coze'" label="扣子API Token">
-              <el-input v-model="settings.cozeToken" type="password" show-password style="width: 300px" />
-            </el-form-item>
-            <el-form-item v-if="settings.aiProvider === 'qwen'" label="通义千问Key">
-              <el-input v-model="settings.qwenKey" type="password" show-password style="width: 300px" />
-            </el-form-item>
-            <el-form-item v-if="settings.aiProvider === 'custom'" label="自定义API地址">
-              <el-input v-model="settings.customApiUrl" style="width: 300px" placeholder="https://api.example.com/v1" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="saveSettings">保存配置</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </el-tab-pane>
-      
-      <el-tab-pane label="账号安全" name="security">
-        <el-card>
-          <el-form label-width="120px">
-            <el-form-item label="当前账号">
-              <span>{{ authStore.user?.username }}</span>
-            </el-form-item>
-            <el-form-item label="修改密码">
-              <el-input type="password" style="width: 200px" placeholder="新密码" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="danger" @click="handleLogout">退出登录</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </el-tab-pane>
-    </el-tabs>
+  <div class="mx-auto max-w-2xl space-y-6">
+    <h1 class="text-2xl font-bold">设置</h1>
+
+    <!-- 账号信息 -->
+    <Card>
+      <CardHeader>
+        <CardTitle class="text-base">账号信息</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-muted-foreground">用户名</p>
+            <p class="font-medium">{{ authStore.user?.username || '未登录' }}</p>
+          </div>
+          <Button variant="outline" size="sm">修改密码</Button>
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- 偏好设置 -->
+    <Card>
+      <CardHeader>
+        <CardTitle class="text-base">偏好设置</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="font-medium">暗色模式</p>
+            <p class="text-sm text-muted-foreground">切换界面主题</p>
+          </div>
+          <div class="flex gap-1">
+            <button
+              v-for="t in themes"
+              :key="t.value"
+              class="flex h-8 w-8 items-center justify-center rounded-md text-sm transition-colors hover:bg-accent"
+              :class="{ 'bg-accent text-accent-foreground': currentTheme === t.value }"
+              @click="handleThemeChange(t.value)"
+            >{{ t.icon }}</button>
+          </div>
+        </div>
+        <Separator />
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="font-medium">自动保存</p>
+            <p class="text-sm text-muted-foreground">编辑器自动保存草稿</p>
+          </div>
+          <Switch :checked="settings.autoSave" @update:checked="settings.autoSave = $event" />
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- AI 配置 -->
+    <Card>
+      <CardHeader>
+        <CardTitle class="text-base">AI配置</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-4">
+        <div class="space-y-2">
+          <Label>AI服务商</Label>
+          <Select v-model="settings.aiProvider">
+            <SelectTrigger class="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="coze">扣子 Coze</SelectItem>
+              <SelectItem value="qwen">通义千问</SelectItem>
+              <SelectItem value="custom">自定义API</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- 数据 -->
+    <Card>
+      <CardHeader>
+        <CardTitle class="text-base">数据与存储</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-3">
+        <Button variant="outline" size="sm">导出所有数据</Button>
+        <div class="flex gap-2">
+          <Button variant="outline" size="sm" @click="saveSettings">保存设置</Button>
+          <Button variant="destructive" size="sm" @click="handleLogout">退出登录</Button>
+        </div>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { ElMessage } from 'element-plus'
+import { useTheme, THEMES } from '@/composables/useTheme'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const activeTab = ref('basic')
+const { theme: currentTheme, setTheme } = useTheme()
+const themes = THEMES
 
 const settings = reactive({
-  theme: 'light',
+  theme: 'dark',
   autoSave: true,
-  autoSaveInterval: 30,
   aiProvider: 'coze',
-  cozeToken: '',
-  qwenKey: '',
-  customApiUrl: ''
 })
 
-const saveSettings = () => {
-  localStorage.setItem('settings', JSON.stringify(settings))
-  ElMessage.success('设置已保存')
-}
-
-const handleLogout = () => {
-  authStore.logout()
-  router.push('/login')
-}
+const handleThemeChange = (t) => setTheme(t)
+const saveSettings = () => { localStorage.setItem('settings', JSON.stringify(settings)) }
+const handleLogout = () => { authStore.logout(); router.push('/login') }
 </script>
-
-<style scoped>
-</style>

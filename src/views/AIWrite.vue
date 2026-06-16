@@ -1,293 +1,113 @@
 <template>
-  <div class="ai-write-page">
-    <h2>AI写作助手</h2>
-    
-    <div class="main-layout">
-      <!-- 左侧：输入区域 -->
-      <div class="input-section">
-        <el-card>
-          <template #header>
-            <span>创作输入</span>
-          </template>
-          
-          <!-- 写作模式选择 -->
-          <div class="mode-selector">
-            <el-radio-group v-model="currentMode" size="large">
-              <el-radio-button value="continue">续写</el-radio-button>
-              <el-radio-button value="polish">润色</el-radio-button>
-              <el-radio-button value="expand">扩写</el-radio-button>
-              <el-radio-button value="outline">大纲</el-radio-button>
-              <el-radio-button value="summary">摘要</el-radio-button>
-            </el-radio-group>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">AI写作助手</h1>
+      <Select :model-value="currentNovelId" @update:model-value="currentNovelId = $event">
+        <SelectTrigger class="w-[200px]">
+          <SelectValue placeholder="选择作品" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem v-for="novel in novels" :key="novel.id" :value="novel.id">{{ novel.title }}</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle class="text-base">AI功能</CardTitle>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <Button variant="outline" class="justify-start h-auto py-3" @click="aiMode = 'continue'">
+              <span class="text-lg mr-2">✨</span>
+              <div class="text-left"><p class="font-medium">智能续写</p><p class="text-xs text-muted-foreground">3个候选续写方案</p></div>
+            </Button>
+            <Button variant="outline" class="justify-start h-auto py-3" @click="aiMode = 'polish'">
+              <span class="text-lg mr-2">💎</span>
+              <div class="text-left"><p class="font-medium">润色优化</p><p class="text-xs text-muted-foreground">提升文字质量</p></div>
+            </Button>
+            <Button variant="outline" class="justify-start h-auto py-3" @click="aiMode = 'deai'">
+              <span class="text-lg mr-2">🎭</span>
+              <div class="text-left"><p class="font-medium">去AI味</p><p class="text-xs text-muted-foreground">让文字回归人味</p></div>
+            </Button>
+            <Button variant="outline" class="justify-start h-auto py-3" @click="aiMode = 'inspire'">
+              <span class="text-lg mr-2">💡</span>
+              <div class="text-left"><p class="font-medium">灵感生成</p><p class="text-xs text-muted-foreground">打破写作瓶颈</p></div>
+            </Button>
           </div>
-
-          <!-- 模式说明 -->
-          <div class="mode-desc">
-            <el-tag :type="modeConfig[currentMode].color" size="small">
-              {{ modeConfig[currentMode].desc }}
-            </el-tag>
+          <Separator />
+          <div class="space-y-2">
+            <Label>输入内容</Label>
+            <Textarea v-model="inputText" placeholder="在此输入需要AI处理的内容..." :rows="6" />
+            <Button class="w-full" :loading="aiLoading" @click="runAI">开始生成</Button>
           </div>
+        </CardContent>
+      </Card>
 
-          <!-- 输入内容 -->
-          <el-form label-position="top">
-            <el-form-item label="输入内容">
-              <el-input 
-                v-model="inputText" 
-                type="textarea" 
-                :rows="6"
-                :placeholder="modeConfig[currentMode].placeholder"
-              />
-            </el-form-item>
-
-            <!-- 扩写模式额外参数 -->
-            <el-form-item v-if="currentMode === 'expand'" label="扩写倍数">
-              <el-slider v-model="expandTimes" :min="1" :max="5" :step="0.5" show-stops />
-              <span class="slider-value">约 {{ Math.round(inputText.length * expandTimes) }} 字</span>
-            </el-form-item>
-
-            <!-- 大纲模式参数 -->
-            <el-form-item v-if="currentMode === 'outline'" label="章节数量">
-              <el-input-number v-model="chapterCount" :min="3" :max="30" />
-            </el-form-item>
-
-            <el-form-item label="写作风格">
-              <el-select v-model="writingStyle" style="width: 100%">
-                <el-option label="严肃文学 - 细腻、深沉、富有哲理" value="serious" />
-                <el-option label="轻松幽默 - 诙谐、活泼、接地气" value="humor" />
-                <el-option label="热血战斗 - 激情、热血、战斗场面" value="action" />
-                <el-option label="悬疑推理 - 紧张、烧脑、逻辑严密" value="mystery" />
-                <el-option label="浪漫言情 - 甜蜜、细腻、情感丰富" value="romance" />
-                <el-option label="科幻未来 - 前沿、想象、科技感" value="scifi" />
-              </el-select>
-            </el-form-item>
-          </el-form>
-
-          <div class="action-area">
-            <el-button type="primary" :loading="generating" @click="handleGenerate" size="large">
-              {{ generating ? 'AI创作中...' : '开始创作' }}
-            </el-button>
-            <el-button @click="handleClear" size="large">清空</el-button>
+      <Card>
+        <CardHeader>
+          <CardTitle class="text-base">生成结果</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div v-if="aiResult" class="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">{{ aiResult }}</div>
+          <div v-else class="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <PenTool class="h-8 w-8 mb-3" />
+            <p class="text-sm">选择AI功能并输入内容，结果将在此显示</p>
           </div>
-        </el-card>
-      </div>
-
-      <!-- 右侧：输出区域 -->
-      <div class="output-section">
-        <el-card class="output-card">
-          <template #header>
-            <div class="output-header">
-              <span>创作结果</span>
-              <div class="output-actions" v-if="outputText">
-                <el-button size="small" @click="handleCopy">复制</el-button>
-              </div>
-            </div>
-          </template>
-          
-          <div v-if="!outputText && !generating" class="empty-output">
-            <el-empty description="AI创作结果将显示在这里" :image-size="60" />
-          </div>
-
-          <div v-else-if="generating" class="generating">
-            <el-icon class="is-loading" :size="32"><Loading /></el-icon>
-            <p>AI正在{{ modeConfig[currentMode].action }}，请稍候...</p>
-          </div>
-
-          <div v-else class="output-content">
-            <div class="word-count-info">字数：{{ outputWordCount }}</div>
-            <el-input v-model="outputText" type="textarea" :rows="16" class="output-textarea" />
-          </div>
-        </el-card>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Loading } from '@element-plus/icons-vue'
-import api from '@/api'
+import { ref, onMounted } from 'vue'
+import { getNovels } from '@/api/modules/novel'
+import { fillChapterStream, extractContent } from '@/api/sse'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { PenTool } from 'lucide-vue-next'
 
-const currentMode = ref('continue')
+const novels = ref([])
+const currentNovelId = ref(null)
 const inputText = ref('')
-const expandTimes = ref(2)
-const chapterCount = ref(10)
-const writingStyle = ref('humor')
-const generating = ref(false)
-const outputText = ref('')
+const aiResult = ref('')
+const aiLoading = ref(false)
+const aiMode = ref('continue')
 
-// 模式配置
-const modeConfig = {
-  continue: {
-    desc: '根据已有内容继续创作，保持文风和节奏',
-    placeholder: '请输入开头或已有内容，AI将为你续写...',
-    action: '续写中',
-    color: 'primary'
-  },
-  polish: {
-    desc: '优化现有文字，提升文笔和表达力',
-    placeholder: '粘贴需要润色的段落...',
-    action: '润色中',
-    color: 'success'
-  },
-  expand: {
-    desc: '对内容进行扩展和深化',
-    placeholder: '输入需要扩写的核心内容...',
-    action: '扩写中',
-    color: 'warning'
-  },
-  outline: {
-    desc: '生成小说章节大纲和结构',
-    placeholder: '描述你的小说主题、背景、主角...',
-    action: '生成大纲中',
-    color: 'info'
-  },
-  summary: {
-    desc: '生成内容摘要和核心要点',
-    placeholder: '粘贴需要摘要的长内容...',
-    action: '生成摘要中',
-    color: ''
-  }
-}
-
-const outputWordCount = computed(() => {
-  return outputText.value.replace(/\s/g, '').length
-})
-
-const handleGenerate = async () => {
-  if (!inputText.value.trim()) {
-    ElMessage.warning('请输入创作内容')
-    return
-  }
-
-  generating.value = true
-  outputText.value = ''
-
+const runAI = async () => {
+  if (!inputText.value) return
+  aiLoading.value = true
+  aiResult.value = ''
   try {
-    const res = await api.post('/ai/generate', {
-      mode: currentMode.value,
-      prompt: inputText.value,
-      style: writingStyle.value
-    })
-    
-    outputText.value = res.generated_text || res.result || '生成完成'
-    ElMessage.success('创作完成')
-  } catch (err) {
-    console.error(err)
-    ElMessage.error('生成失败：' + (err.response?.data?.error || err.message))
-  } finally {
-    generating.value = false
+    fillChapterStream(
+      { text: inputText.value, mode: aiMode.value, novel_id: currentNovelId.value },
+      {
+        onMessage: (data) => {
+          const content = extractContent(data)
+          if (content) aiResult.value += content
+        },
+        onDone: () => { aiLoading.value = false },
+        onError: () => { aiLoading.value = false }
+      }
+    )
+  } catch (e) {
+    aiLoading.value = false
   }
 }
 
-const handleCopy = () => {
-  navigator.clipboard.writeText(outputText.value)
-  ElMessage.success('已复制到剪贴板')
-}
-
-const handleClear = () => {
-  inputText.value = ''
-  outputText.value = ''
-}
+onMounted(async () => {
+  try {
+    const res = await getNovels()
+    novels.value = res.data?.items || res.data || []
+    if (novels.value.length) currentNovelId.value = novels.value[0].id
+  } catch (e) {
+    console.error('加载作品失败:', e)
+  }
+})
 </script>
-
-<style scoped>
-.ai-write-page {
-  padding: 20px;
-  height: calc(100vh - 120px);
-  overflow: hidden;
-}
-
-h2 {
-  margin: 0 0 20px 0;
-}
-
-.main-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  height: calc(100% - 60px);
-}
-
-.input-section,
-.output-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow-y: auto;
-}
-
-.mode-selector {
-  margin-bottom: 12px;
-}
-
-.mode-desc {
-  margin-bottom: 16px;
-}
-
-.action-area {
-  display: flex;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.output-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.output-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.output-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.empty-output {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.generating {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  color: #666;
-}
-
-.output-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.word-count-info {
-  font-size: 12px;
-  color: #999;
-  text-align: right;
-}
-
-.output-textarea :deep(textarea) {
-  font-size: 14px;
-  line-height: 1.8;
-}
-
-.slider-value {
-  margin-left: 12px;
-  color: #409eff;
-}
-
-:deep(.el-radio-group) {
-  flex-wrap: wrap;
-}
-</style>

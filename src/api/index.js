@@ -4,7 +4,7 @@
  */
 
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+// element-plus removed
 
 // 创建 axios 实例
 const api = axios.create({
@@ -40,7 +40,7 @@ api.interceptors.response.use(
       if (token) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
-        ElMessage.error('登录已过期，请重新登录')
+        console.error('登录已过期，请重新登录')
         if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
           window.location.href = '/login'
         }

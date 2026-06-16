@@ -1,446 +1,113 @@
 <template>
-  <div class="worlds-page">
-    <!-- 顶部操作栏 -->
-    <div class="header">
-      <div class="header-left">
-        <el-select 
-          v-model="currentNovelId" 
-          placeholder="选择作品" 
-          class="novel-select"
-          @change="handleNovelChange"
-        >
-          <el-option
-            v-for="novel in novels"
-            :key="novel.id"
-            :label="novel.title"
-            :value="novel.id"
-          />
-        </el-select>
-        <el-input
-          v-model="searchKeyword"
-          placeholder="搜索世界观..."
-          class="search-input"
-          clearable
-          @input="handleSearch"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-        </el-input>
-      </div>
-      <el-button 
-        type="primary" 
-        @click="openCreateDialog"
-        :disabled="!currentNovelId"
-      >
-        <el-icon><Plus /></el-icon>
-        新建世界观
-      </el-button>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">世界观设定</h1>
+      <Button @click="showCreateDialog = true"><Plus class="mr-2 h-4 w-4" /> 新建设定</Button>
     </div>
 
-    <!-- 世界观卡片网格 -->
-    <div class="world-grid" v-if="filteredWorlds.length">
-      <el-card 
-        v-for="world in filteredWorlds" 
-        :key="world.id" 
-        class="world-card"
-        shadow="hover"
-      >
-        <template #header>
-          <div class="card-header">
-            <span class="world-name">{{ world.name }}</span>
-            <el-tag :type="getCategoryType(world.category)" size="small">
-              {{ getCategoryLabel(world.category) }}
-            </el-tag>
+    <div class="relative max-w-sm">
+      <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input v-model="searchQuery" placeholder="搜索世界观..." class="pl-9" />
+    </div>
+
+    <div v-if="filteredWorlds.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Card v-for="world in filteredWorlds" :key="world.id" class="transition-all hover:shadow-md group">
+        <CardHeader>
+          <div class="flex items-start justify-between">
+            <CardTitle class="text-base">{{ world.name }}</CardTitle>
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <Button variant="ghost" size="icon" class="h-7 w-7 opacity-0 group-hover:opacity-100"><MoreHorizontal class="h-4 w-4" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem @click="editWorld(world)"><Pencil class="mr-2 h-4 w-4" />编辑</DropdownMenuItem>
+                <DropdownMenuItem @click="deleteWorld(world)" class="text-destructive"><Trash2 class="mr-2 h-4 w-4" />删除</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </template>
-        <div class="card-body">
-          <p class="world-desc">{{ world.description || '暂无描述' }}</p>
-        </div>
-        <template #footer>
-          <div class="card-footer">
-            <span class="update-time">{{ formatDate(world.updated_at) }}</span>
-            <div class="actions">
-              <el-button type="primary" size="small" link @click="openEditDialog(world)">
-                编辑
-              </el-button>
-              <el-button type="danger" size="small" link @click="handleDelete(world)">
-                删除
-              </el-button>
-            </div>
+        </CardHeader>
+        <CardContent>
+          <p class="text-sm text-muted-foreground line-clamp-3">{{ world.description || '暂无描述' }}</p>
+          <div class="mt-2 flex flex-wrap gap-1">
+            <Badge v-if="world.category" variant="outline">{{ world.category }}</Badge>
           </div>
-        </template>
-      </el-card>
+        </CardContent>
+      </Card>
     </div>
 
-    <!-- 空状态 -->
-    <el-empty 
-      v-else-if="!loading" 
-      :description="currentNovelId ? '暂无世界观设定' : '请先选择作品'"
-    >
-      <el-button type="primary" @click="openCreateDialog" v-if="currentNovelId">
-        创建第一个世界观
-      </el-button>
-    </el-empty>
-
-    <!-- 加载状态 -->
-    <div class="loading-container" v-if="loading">
-      <el-skeleton :rows="3" animated />
+    <div v-else class="flex flex-col items-center py-16 text-muted-foreground">
+      <Globe class="h-10 w-10 mb-3" />
+      <p>暂无世界观设定，点击创建</p>
     </div>
 
-    <!-- 新建/编辑对话框 -->
-    <el-dialog
-      v-model="dialogVisible"
-      :title="isEdit ? '编辑世界观' : '新建世界观'"
-      width="500px"
-      @close="resetForm"
-    >
-      <el-form 
-        ref="formRef"
-        :model="formData"
-        :rules="formRules"
-        label-width="80px"
-      >
-        <el-form-item label="名称" prop="name">
-          <el-input 
-            v-model="formData.name" 
-            placeholder="请输入世界观名称"
-            maxlength="50"
-            show-word-limit
-          />
-        </el-form-item>
-        <el-form-item label="分类" prop="category">
-          <el-select v-model="formData.category" placeholder="选择分类">
-            <el-option label="规则体系" value="rules" />
-            <el-option label="地理环境" value="geography" />
-            <el-option label="历史背景" value="history" />
-            <el-option label="文化习俗" value="culture" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input
-            v-model="formData.description"
-            type="textarea"
-            :rows="5"
-            placeholder="请输入世界观描述..."
-            maxlength="500"
-            show-word-limit
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">
-          {{ isEdit ? '保存' : '创建' }}
-        </el-button>
-      </template>
-    </el-dialog>
+    <Dialog :open="showCreateDialog" @update:open="showCreateDialog = $event">
+      <DialogContent class="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{{ editingWorld ? '编辑世界观' : '新建世界观' }}</DialogTitle>
+        </DialogHeader>
+        <form @submit.prevent="saveWorld" class="space-y-4">
+          <div class="space-y-2">
+            <Label>名称 *</Label>
+            <Input v-model="worldForm.name" placeholder="世界观名称" />
+          </div>
+          <div class="space-y-2">
+            <Label>分类</Label>
+            <Input v-model="worldForm.category" placeholder="如：地理、历史、魔法体系" />
+          </div>
+          <div class="space-y-2">
+            <Label>描述</Label>
+            <Textarea v-model="worldForm.description" placeholder="详细描述" :rows="5" />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" @click="showCreateDialog = false">取消</Button>
+            <Button type="submit" :loading="saving">保存</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus } from '@element-plus/icons-vue'
-import { getWorlds, createWorld, updateWorld, deleteWorld } from '@/api/modules/world'
-import { getNovels } from '@/api/modules/novel'
+import { ref, computed, onMounted } from 'vue'
+import { getWorlds } from '@/api/modules/world'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { Plus, Search, Pencil, Trash2, MoreHorizontal, Globe } from 'lucide-vue-next'
 
-// 状态
-const novels = ref([])
-const currentNovelId = ref(null)
 const worlds = ref([])
-const loading = ref(false)
-const submitting = ref(false)
-const searchKeyword = ref('')
-const dialogVisible = ref(false)
-const isEdit = ref(false)
-const editingId = ref(null)
-const formRef = ref(null)
+const searchQuery = ref('')
+const showCreateDialog = ref(false)
+const editingWorld = ref(null)
+const saving = ref(false)
+const worldForm = ref({ name: '', category: '', description: '', novel_id: null })
 
-// 表单数据
-const formData = reactive({
-  name: '',
-  category: 'rules',
-  description: ''
-})
-
-// 表单验证规则
-const formRules = {
-  name: [
-    { required: true, message: '请输入世界观名称', trigger: 'blur' },
-    { min: 1, max: 50, message: '长度在 1 到 50 个字符', trigger: 'blur' }
-  ],
-  category: [
-    { required: true, message: '请选择分类', trigger: 'change' }
-  ],
-  description: [
-    { max: 500, message: '描述不能超过500字符', trigger: 'blur' }
-  ]
-}
-
-// 分类配置
-const categoryMap = {
-  rules: { label: '规则体系', type: 'primary' },
-  geography: { label: '地理环境', type: 'success' },
-  history: { label: '历史背景', type: 'warning' },
-  culture: { label: '文化习俗', type: 'info' }
-}
-
-// 计算属性：过滤后的世界观
 const filteredWorlds = computed(() => {
-  if (!searchKeyword.value) return worlds.value
-  const keyword = searchKeyword.value.toLowerCase()
-  return worlds.value.filter(world => 
-    world.name?.toLowerCase().includes(keyword) ||
-    world.description?.toLowerCase().includes(keyword)
-  )
+  if (!searchQuery.value) return worlds.value
+  const q = searchQuery.value.toLowerCase()
+  return worlds.value.filter(w => w.name?.toLowerCase().includes(q) || w.description?.toLowerCase().includes(q))
 })
 
-// 获取作品列表
-const loadNovels = async () => {
+const loadWorlds = async () => { try { const res = await getWorlds(); worlds.value = res.data?.items || res.data || res || [] } catch {} }
+const editWorld = (w) => { editingWorld.value = w; worldForm.value = { name: w.name, category: w.category || '', description: w.description || '', novel_id: w.novel_id }; showCreateDialog.value = true }
+const deleteWorld = async (w) => { if (!confirm(`确定删除「${w.name}」？`)) return; try { await deleteWorldApi(w.id); loadWorlds() } catch {} }
+const saveWorld = async () => {
+  if (!worldForm.value.name) return
+  saving.value = true
   try {
-    const res = await getNovels()
-    novels.value = res.data?.items || res.data || []
-    // 自动选择第一个作品
-    if (novels.value.length && !currentNovelId.value) {
-      currentNovelId.value = novels.value[0].id
-      loadWorlds()
-    }
-  } catch (err) {
-    console.error('加载作品列表失败:', err)
-  }
-}
-
-// 加载世界观列表
-const loadWorlds = async () => {
-  if (!currentNovelId.value) return
-  loading.value = true
-  try {
-    const res = await getWorlds(currentNovelId.value)
-    worlds.value = res.data || []
-  } catch (err) {
-    console.error('加载世界观列表失败:', err)
-    ElMessage.error('加载世界观失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-// 作品切换
-const handleNovelChange = () => {
-  loadWorlds()
-}
-
-// 搜索
-const handleSearch = () => {
-  // 过滤在computed中处理
-}
-
-// 获取分类标签
-const getCategoryLabel = (category) => {
-  return categoryMap[category]?.label || category
-}
-
-// 获取分类颜色
-const getCategoryType = (category) => {
-  return categoryMap[category]?.type || 'info'
-}
-
-// 格式化日期
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('zh-CN')
-}
-
-// 打开创建对话框
-const openCreateDialog = () => {
-  isEdit.value = false
-  editingId.value = null
-  dialogVisible.value = true
-}
-
-// 打开编辑对话框
-const openEditDialog = (world) => {
-  isEdit.value = true
-  editingId.value = world.id
-  formData.name = world.name
-  formData.category = world.category || 'rules'
-  formData.description = world.description || ''
-  dialogVisible.value = true
-}
-
-// 重置表单
-const resetForm = () => {
-  formData.name = ''
-  formData.category = 'rules'
-  formData.description = ''
-  formRef.value?.resetFields()
-}
-
-// 提交表单
-const handleSubmit = async () => {
-  const valid = await formRef.value.validate().catch(() => false)
-  if (!valid) return
-  
-  submitting.value = true
-  try {
-    if (isEdit.value) {
-      await updateWorld(currentNovelId.value, editingId.value, {
-        name: formData.name,
-        category: formData.category,
-        description: formData.description
-      })
-      ElMessage.success('更新成功')
-    } else {
-      await createWorld(currentNovelId.value, {
-        name: formData.name,
-        category: formData.category,
-        description: formData.description
-      })
-      ElMessage.success('创建成功')
-    }
-    dialogVisible.value = false
+    if (editingWorld.value) await updateWorld(editingWorld.value.id, worldForm.value)
+    else await createWorld(worldForm.value)
+    showCreateDialog.value = false; editingWorld.value = null
+    worldForm.value = { name: '', category: '', description: '', novel_id: null }
     loadWorlds()
-  } catch (err) {
-    console.error('保存失败:', err)
-    ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
-  } finally {
-    submitting.value = false
-  }
+  } catch {} finally { saving.value = false }
 }
 
-// 删除世界观
-const handleDelete = async (world) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除世界观「${world.name}」吗？`,
-      '删除确认',
-      { type: 'warning' }
-    )
-    await deleteWorld(currentNovelId.value, world.id)
-    ElMessage.success('删除成功')
-    loadWorlds()
-  } catch (err) {
-    if (err !== 'cancel') {
-      console.error('删除失败:', err)
-      ElMessage.error('删除失败')
-    }
-  }
-}
-
-// 初始化
-onMounted(() => {
-  loadNovels()
-})
+onMounted(loadWorlds)
 </script>
-
-<style scoped>
-.worlds-page {
-  padding: 20px;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.header-left {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.novel-select {
-  width: 200px;
-}
-
-.search-input {
-  width: 240px;
-}
-
-.world-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
-}
-
-.world-card {
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.world-card:hover {
-  transform: translateY(-4px);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.world-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.card-body {
-  min-height: 60px;
-}
-
-.world-desc {
-  color: #666;
-  font-size: 14px;
-  line-height: 1.6;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.update-time {
-  font-size: 12px;
-  color: #999;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-}
-
-.loading-container {
-  padding: 20px;
-}
-
-/* 响应式 */
-@media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .header-left {
-    flex-direction: column;
-  }
-  
-  .novel-select,
-  .search-input {
-    width: 100%;
-  }
-  
-  .world-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
